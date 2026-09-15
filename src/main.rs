@@ -115,6 +115,22 @@ fn main() {
             tracers.log_sample(10);
             return;
         }
+        if arg == "--tracer-hist" {
+            let mask = sim::obstacle::default_circle(gpu::lbm::W, gpu::lbm::H);
+            let mut lbm = gpu::lbm::Lbm::new(device.clone(), queue.clone(), 0.05, 0.536, &mask);
+            let mut tracers = Tracers::new(device.clone(), queue.clone(), format, gpu::lbm::W, gpu::lbm::H, &lbm.macro_buf);
+            for _ in 0..500 {
+                let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                for _ in 0..4 {
+                    lbm.dispatch_into(&mut enc);
+                }
+                tracers.advect_into(&mut enc, 4, 0.05);
+                queue.submit([enc.finish()]);
+            }
+            device.poll(wgpu::Maintain::Wait);
+            tracers.log_histogram(10);
+            return;
+        }
         if arg.starts_with("--mask-test=") {
             let path = std::path::Path::new(&arg["--mask-test=".len()..]);
             match sim::obstacle::from_png(path, gpu::lbm::W, gpu::lbm::H) {
@@ -231,6 +247,14 @@ fn main() {
                             ui.add(egui::Slider::new(&mut gui_state.wind_speed, 0.01..=0.10).fixed_decimals(3));
                             ui.label("Reynolds number");
                             ui.add(egui::Slider::new(&mut gui_state.reynolds, 10.0..=500.0).logarithmic(true));
+                            if (gui_state.wind_speed > 0.06 && gui_state.reynolds > 300.0)
+                                || gui_state.reynolds > 400.0
+                            {
+                                ui.colored_label(
+                                    egui::Color32::YELLOW,
+                                    "High Re may be unstable at this grid resolution.",
+                                );
+                            }
                             ui.label("Steps per frame");
                             ui.add(egui::Slider::new(&mut gui_state.steps_per_frame, 1..=10));
                             ui.separator();

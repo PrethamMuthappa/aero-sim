@@ -31,7 +31,7 @@ fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
     let ny = 1.0 - (py / f32(rp.H)) * 2.0;
     var out: VsOut;
     out.pos = vec4<f32>(nx, ny, 0.0, 1.0);
-    out.age_fade = clamp(1.0 - p.z / 600.0, 0.15, 1.0);
+    out.age_fade = clamp(1.0 - p.z / 15000.0, 0.15, 1.0);
     return out;
 }
 

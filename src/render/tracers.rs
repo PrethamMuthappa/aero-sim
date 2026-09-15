@@ -2,6 +2,7 @@ use wgpu::{Device, Queue, ShaderModuleDescriptor, ShaderSource};
 use std::sync::Arc;
 
 pub const N_TRACERS: u32 = 20000;
+pub const TRACER_MAX_AGE: f32 = 15000.0;
 
 pub struct Tracers {
     device: Arc<Device>,
@@ -43,7 +44,7 @@ impl Tracers {
             let fx = (rng >> 8) as f32 / 16777216.0;
             init.push(1.0 + fx * (w as f32 - 2.0));
             init.push(1.0 + fy * (h as f32 - 2.0));
-            init.push(fx * 600.0);
+            init.push(fx * TRACER_MAX_AGE);
             init.push(f32::from_bits(rng));
         }
         queue.write_buffer(&particles, 0, bytemuck::cast_slice::<f32, u8>(&init));
@@ -214,7 +215,7 @@ impl Tracers {
         b[4..8].copy_from_slice(&self.h.to_le_bytes());
         b[8..12].copy_from_slice(&self.frame.to_le_bytes());
         b[12..16].copy_from_slice(&dt.to_le_bytes());
-        b[16..20].copy_from_slice(&600.0f32.to_le_bytes());
+        b[16..20].copy_from_slice(&TRACER_MAX_AGE.to_le_bytes());
         b[20..24].copy_from_slice(&u_inlet.to_le_bytes());
         self.queue.write_buffer(&self.params, 0, &b);
         let _ = &self.device;
@@ -237,6 +238,36 @@ impl Tracers {
         rpass.set_pipeline(&self.render_pipe);
         rpass.set_bind_group(0, &self.render_bg, &[]);
         rpass.draw(0..6, 0..N_TRACERS);
+    }
+
+    pub fn log_histogram(&self, nbins: usize) {
+        let n = N_TRACERS as usize;
+        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("tracer-staging"),
+            size: n as u64 * 16,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        enc.copy_buffer_to_buffer(&self.particles, 0, &staging, 0, n as u64 * 16);
+        self.queue.submit([enc.finish()]);
+        let slice = staging.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        self.device.poll(wgpu::Maintain::Wait);
+        let data = slice.get_mapped_range();
+        let vals: &[f32] = bytemuck::cast_slice::<u8, f32>(&data);
+        let mut bins = vec![0usize; nbins];
+        for i in 0..n {
+            let x = vals[i * 4];
+            let mut b = (x / self.w as f32 * nbins as f32) as usize;
+            if b >= nbins {
+                b = nbins - 1;
+            }
+            bins[b] += 1;
+        }
+        log::info!("tracer x-histogram ({} bins, W={}): {:?}", nbins, self.w, bins);
+        drop(data);
+        staging.unmap();
     }
 
     pub fn log_sample(&self, n: u32) {
