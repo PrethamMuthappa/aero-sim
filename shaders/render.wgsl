@@ -63,7 +63,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let ux = macro_buf[base + 1u];
     let uy = macro_buf[base + 2u];
     if (rparams.mode == 1u) {
-        let t = clamp((rho - 1.0) * 20.0 + 0.5, 0.0, 1.0);
+        let u = max(rparams.u_scale * 0.5, 0.001);
+        let pscale = 1.0 / (u * u * 13.0);
+        let t = clamp((rho - 1.0) * pscale * 0.5 + 0.5, 0.0, 1.0);
         return vec4<f32>(colormap(t), 1.0);
     }
     if (rparams.mode == 2u) {

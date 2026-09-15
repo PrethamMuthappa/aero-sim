@@ -11,7 +11,7 @@ mod render;
 mod sim;
 mod gui;
 pub use gpu::{run_compute_test, run_lbm_tests};
-pub use render::Renderer;
+pub use render::{Renderer, Tracers};
 pub use gui::{GuiState, VizMode};
 
 fn main() {
@@ -97,6 +97,7 @@ fn main() {
     let mask = sim::obstacle::default_circle(gpu::lbm::W, gpu::lbm::H);
     let mut lbm = gpu::lbm::Lbm::new(device.clone(), queue.clone(), gui_state.wind_speed, tau, &mask);
     let renderer = Renderer::new(device.clone(), queue.clone(), format, gpu::lbm::W, gpu::lbm::H, &lbm.macro_buf);
+    let mut tracers = Tracers::new(device.clone(), queue.clone(), format, gpu::lbm::W, gpu::lbm::H, &lbm.macro_buf);
     let egui_ctx = egui::Context::default();
     let mut egui_winit = egui_winit::State::new(
         egui_ctx.clone(),
@@ -210,6 +211,8 @@ fn main() {
                             ui.radio_value(&mut gui_state.visualization, VizMode::Pressure, "Pressure");
                             ui.radio_value(&mut gui_state.visualization, VizMode::Vorticity, "Vorticity");
                             ui.separator();
+                            ui.checkbox(&mut gui_state.show_tracers, "Particle tracers");
+                            ui.separator();
                             ui.label(format!("FPS: {:.1}", gui_state.fps));
                             ui.label(format!("Steps: {}", gui_state.total_steps));
                             ui.label(format!("Grid: {}x{}", gpu::lbm::W, gpu::lbm::H));
@@ -262,6 +265,9 @@ fn main() {
                     }
                     gui_state.total_steps += gui_state.steps_per_frame as u64;
                 }
+                if !gui_state.paused && gui_state.show_tracers {
+                    tracers.advect_into(&mut enc, gui_state.steps_per_frame, gui_state.wind_speed);
+                }
                 {
                     let mut rpass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("render"),
@@ -278,6 +284,9 @@ fn main() {
                         occlusion_query_set: None,
                     });
                     renderer.draw(&mut rpass);
+                    if gui_state.show_tracers {
+                        tracers.draw(&mut rpass);
+                    }
                 }
                 let paint_jobs = egui_ctx.tessellate(full_output.shapes, full_output.pixels_per_point);
                 let screen_desc = egui_wgpu::ScreenDescriptor {

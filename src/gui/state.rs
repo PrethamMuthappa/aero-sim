@@ -26,6 +26,7 @@ pub struct GuiState {
     pub visualization: VizMode,
     pub obstacle_name: String,
     pub pending_obstacle_load: Option<std::path::PathBuf>,
+    pub show_tracers: bool,
 }
 
 impl Default for GuiState {
@@ -41,6 +42,7 @@ impl Default for GuiState {
             visualization: VizMode::VelocityMagnitude,
             obstacle_name: "circle".to_string(),
             pending_obstacle_load: None,
+            show_tracers: true,
         }
     }
 }
