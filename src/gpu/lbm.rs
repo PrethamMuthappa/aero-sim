@@ -369,5 +369,6 @@ pub fn run_lbm_tests(device: std::sync::Arc<Device>, queue: std::sync::Arc<Queue
     info!("Test D 1000 steps at 512x256: {:.2?} ({:.1} steps/s)", dt, 1000.0 / dt.as_secs_f32());
     let m = lbm.read_macro();
     info!("=== LBM Milestone 5 PASSED ===");
+    let _ = m;
     Ok(())
 }
