@@ -1,0 +1,20 @@
+[package]
+name = "aero"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wgpu = "0.20"
+pollster = "0.3"
+env_logger = "0.11"
+log = "0.4"
+winit = "0.29"
+bytemuck = "1.15"
+egui = "0.28"
+egui-wgpu = "0.28"
+egui-winit = "0.28"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

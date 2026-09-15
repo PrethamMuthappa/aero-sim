@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  rust-dev:
+    image: rust:latest
+    working_dir: /app
+    volumes:
+      - .:/app
+      - cargo_registry:/usr/local/cargo/registry
+      - cargo_git:/usr/local/cargo/git
+      - target_cache:/app/target
+    environment:
+      RUST_LOG: info
+    command: sleep infinity
+
+volumes:
+  cargo_registry:
+  cargo_git:
+  target_cache:
