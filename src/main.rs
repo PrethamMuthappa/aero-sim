@@ -78,6 +78,43 @@ fn main() {
         return;
     }
     for arg in std::env::args().skip(1) {
+        if arg.starts_with("--stability=") {
+            let re_max: f32 = arg["--stability=".len()..].parse().unwrap_or(500.0);
+            let mask = sim::obstacle::default_circle(gpu::lbm::W, gpu::lbm::H);
+            let d = 2.0 * gpu::lbm::H as f32 / 20.0;
+            let u = 0.05;
+            let mut re = 250.0f32;
+            while re <= re_max {
+                let nu = u * d / re;
+                let tau = (3.0 * nu + 0.5).max(0.51);
+                let mut lbm = gpu::lbm::Lbm::new(device.clone(), queue.clone(), u, tau, &mask);
+                lbm.step(5000);
+                let m = lbm.read_macro();
+                let bad = m.iter().any(|v| !v.is_finite());
+                let maxu = m.chunks_exact(4).map(|c| (c[1] * c[1] + c[2] * c[2]).sqrt()).fold(0.0f32, f32::max);
+                info!("stability Re={:.0} tau={:.4} max|u|={:.4} nan={}", re, tau, maxu, bad);
+                if bad || maxu > 0.3 {
+                    info!("stability ceiling reached at Re={:.0}", re);
+                    return;
+                }
+                re += 50.0;
+            }
+            info!("stability: clean through Re={:.0}", re_max);
+            return;
+        }
+        if arg == "--tracer-sample" {
+            let mask = sim::obstacle::default_circle(gpu::lbm::W, gpu::lbm::H);
+            let mut lbm = gpu::lbm::Lbm::new(device.clone(), queue.clone(), 0.05, 0.536, &mask);
+            let mut tracers = Tracers::new(device.clone(), queue.clone(), format, gpu::lbm::W, gpu::lbm::H, &lbm.macro_buf);
+            tracers.log_sample(10);
+            let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+            lbm.dispatch_into(&mut enc);
+            tracers.advect_into(&mut enc, 1, 0.05);
+            queue.submit([enc.finish()]);
+            device.poll(wgpu::Maintain::Wait);
+            tracers.log_sample(10);
+            return;
+        }
         if arg.starts_with("--mask-test=") {
             let path = std::path::Path::new(&arg["--mask-test=".len()..]);
             match sim::obstacle::from_png(path, gpu::lbm::W, gpu::lbm::H) {

@@ -31,7 +31,7 @@ impl Tracers {
         let particles = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("tracers"),
             size: n_bytes,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
         let mut init = Vec::with_capacity(N_TRACERS as usize * 4);
@@ -179,13 +179,20 @@ impl Tracers {
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::SrcAlpha,
+                            dst_factor: wgpu::BlendFactor::One,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                        alpha: wgpu::BlendComponent::REPLACE,
+                    }),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
                 compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::PointList,
+                topology: wgpu::PrimitiveTopology::TriangleList,
                 cull_mode: None,
                 ..Default::default()
             },
@@ -229,6 +236,31 @@ impl Tracers {
     pub fn draw<'a>(&'a self, rpass: &mut wgpu::RenderPass<'a>) {
         rpass.set_pipeline(&self.render_pipe);
         rpass.set_bind_group(0, &self.render_bg, &[]);
-        rpass.draw(0..N_TRACERS, 0..1);
+        rpass.draw(0..6, 0..N_TRACERS);
+    }
+
+    pub fn log_sample(&self, n: u32) {
+        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("tracer-staging"),
+            size: n as u64 * 16,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        enc.copy_buffer_to_buffer(&self.particles, 0, &staging, 0, n as u64 * 16);
+        self.queue.submit([enc.finish()]);
+        let slice = staging.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        self.device.poll(wgpu::Maintain::Wait);
+        let data = slice.get_mapped_range();
+        let vals: &[f32] = bytemuck::cast_slice::<u8, f32>(&data);
+        for i in 0..n as usize {
+            log::info!(
+                "tracer[{}] x={:.2} y={:.2} age={:.0} seed_bits={}",
+                i, vals[i * 4], vals[i * 4 + 1], vals[i * 4 + 2], vals[i * 4 + 3].to_bits()
+            );
+        }
+        drop(data);
+        staging.unmap();
     }
 }

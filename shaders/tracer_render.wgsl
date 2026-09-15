@@ -14,10 +14,21 @@ struct VsOut {
 };
 
 @vertex
-fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
-    let p = particles[vi];
-    let nx = (p.x / f32(rp.W)) * 2.0 - 1.0;
-    let ny = 1.0 - (p.y / f32(rp.H)) * 2.0;
+fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut {
+    let p = particles[ii];
+    var cx: f32;
+    var cy: f32;
+    if (vi == 0u) { cx = -1.0; cy = -1.0; }
+    else if (vi == 1u) { cx = 1.0; cy = -1.0; }
+    else if (vi == 2u) { cx = -1.0; cy = 1.0; }
+    else if (vi == 3u) { cx = -1.0; cy = 1.0; }
+    else if (vi == 4u) { cx = 1.0; cy = -1.0; }
+    else { cx = 1.0; cy = 1.0; }
+    let half_px = 1.5;
+    let px = p.x + cx * half_px;
+    let py = p.y + cy * half_px;
+    let nx = (px / f32(rp.W)) * 2.0 - 1.0;
+    let ny = 1.0 - (py / f32(rp.H)) * 2.0;
     var out: VsOut;
     out.pos = vec4<f32>(nx, ny, 0.0, 1.0);
     out.age_fade = clamp(1.0 - p.z / 600.0, 0.15, 1.0);
@@ -26,5 +37,5 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
-    return vec4<f32>(1.0, 1.0, 1.0, in.age_fade * 0.55);
+    return vec4<f32>(1.0, 1.0, 1.0, in.age_fade * 0.8);
 }
