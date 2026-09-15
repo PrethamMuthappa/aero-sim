@@ -1,7 +1,7 @@
 use wgpu::{Device, Queue, ShaderModuleDescriptor, ShaderSource};
 use std::sync::Arc;
 
-pub const N_TRACERS: u32 = 20000;
+pub const N_TRACERS: u32 = 2000;
 pub const TRACER_MAX_AGE: f32 = 15000.0;
 
 pub struct Tracers {
@@ -205,6 +205,7 @@ impl Tracers {
             device, queue, particles, params, compute_pipe, compute_bg,
             render_pipe, render_bg, render_params, frame: 0, w, h,
         };
+        log::info!("Tracer count: {}", N_TRACERS);
         s.write_params(1.0, 0.05);
         s
     }

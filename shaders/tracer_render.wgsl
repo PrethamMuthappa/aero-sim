@@ -10,7 +10,7 @@ struct TracerRenderParams {
 
 struct VsOut {
     @builtin(position) pos: vec4<f32>,
-    @location(0) age_fade: f32,
+    @location(0) age: f32,
 };
 
 @vertex
@@ -31,11 +31,13 @@ fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
     let ny = 1.0 - (py / f32(rp.H)) * 2.0;
     var out: VsOut;
     out.pos = vec4<f32>(nx, ny, 0.0, 1.0);
-    out.age_fade = clamp(1.0 - p.z / 15000.0, 0.15, 1.0);
+    out.age = p.z;
     return out;
 }
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
-    return vec4<f32>(1.0, 1.0, 1.0, in.age_fade * 0.8);
+    let life = 1.0 - (in.age / 15000.0);
+    let alpha = clamp(life * 1.5, 0.0, 1.0) * 0.8;
+    return vec4<f32>(1.0, 1.0, 1.0, alpha);
 }
