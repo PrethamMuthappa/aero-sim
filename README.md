@@ -29,8 +29,18 @@ Both within ~2%. The bounce-back and solver are quantitatively correct.
 > <!-- SHOT: circle at Re=100, velocity magnitude + tracers -->
 > <!-- ![Circle, Re=100, velocity](docs/images/circle-re100-velocity.png) -->
 
+<img width="1016" height="546" alt="Screenshot 2026-09-15 at 12 13 37 PM" src="https://github.com/user-attachments/assets/f1b58305-0d74-4bff-86fd-1a0bc8436950" />
+
+
+
 > <!-- SHOT: circle at Re=200, vorticity + tracers, developed street -->
 > <!-- ![Circle, Re=200, vorticity](docs/images/circle-re200-vorticity.png) -->
+
+<img width="1011" height="538" alt="Screenshot 2026-09-15 at 12 39 36 PM" src="https://github.com/user-attachments/assets/87339ad3-b986-472f-be4c-64edae7eb5d8" />
+
+
+<img width="1024" height="550" alt="Screenshot 2026-09-15 at 12 14 57 PM" src="https://github.com/user-attachments/assets/e7045421-e5ad-47b5-a304-f79d5b88d1c4" />
+ 
 
 > <!-- SHOT: circle at Re=200, vorticity, tracers OFF (clean reference) -->
 > <!-- ![Circle, Re=200, vorticity, no tracers](docs/images/circle-re200-vorticity-clean.png) -->
