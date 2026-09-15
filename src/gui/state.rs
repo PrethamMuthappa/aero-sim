@@ -24,6 +24,8 @@ pub struct GuiState {
     pub fps: f64,
     pub total_steps: u64,
     pub visualization: VizMode,
+    pub obstacle_name: String,
+    pub pending_obstacle_load: Option<std::path::PathBuf>,
 }
 
 impl Default for GuiState {
@@ -37,6 +39,8 @@ impl Default for GuiState {
             fps: 0.0,
             total_steps: 0,
             visualization: VizMode::VelocityMagnitude,
+            obstacle_name: "circle".to_string(),
+            pending_obstacle_load: None,
         }
     }
 }

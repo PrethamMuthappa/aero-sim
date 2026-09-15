@@ -13,6 +13,8 @@ bytemuck = "1.15"
 egui = "0.28"
 egui-wgpu = "0.28"
 egui-winit = "0.28"
+rfd = "0.14"
+image = "0.25"
 
 [profile.release]
 opt-level = 3

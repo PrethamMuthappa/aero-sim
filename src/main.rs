@@ -76,6 +76,21 @@ fn main() {
         info!("All tests passed, exiting");
         return;
     }
+    for arg in std::env::args().skip(1) {
+        if arg.starts_with("--mask-test=") {
+            let path = std::path::Path::new(&arg["--mask-test=".len()..]);
+            match sim::obstacle::from_png(path, gpu::lbm::W, gpu::lbm::H) {
+                Ok(o) => info!(
+                    "mask-test {}: {} solid cells of {}",
+                    o.name,
+                    o.mask.iter().filter(|&&v| v == 1).count(),
+                    o.mask.len()
+                ),
+                Err(e) => info!("mask-test {} FAILED: {}", path.display(), e),
+            }
+            return;
+        }
+    }
     let mut gui_state = GuiState::default();
     let tau = gui_state.tau(2.0 * gpu::lbm::H as f32 / 20.0);
     let mask = sim::obstacle::default_circle(gpu::lbm::W, gpu::lbm::H);
@@ -156,6 +171,23 @@ fn main() {
                         .show(ctx, |ui| {
                             ui.heading("Aero 2D");
                             ui.separator();
+                            ui.label("Obstacle");
+                            ui.label(format!("Current: {}", gui_state.obstacle_name));
+                            ui.horizontal(|ui| {
+                                if ui.button("Load PNG...").clicked() {
+                                    if let Some(path) = rfd::FileDialog::new()
+                                        .add_filter("Images", &["png", "jpg", "jpeg"])
+                                        .pick_file()
+                                    {
+                                        gui_state.pending_obstacle_load = Some(path);
+                                    }
+                                }
+                                if ui.button("Circle").clicked() {
+                                    gui_state.pending_obstacle_load =
+                                        Some(std::path::PathBuf::from("__circle__"));
+                                }
+                            });
+                            ui.separator();
                             ui.label("Wind speed (lattice)");
                             ui.add(egui::Slider::new(&mut gui_state.wind_speed, 0.01..=0.10).fixed_decimals(3));
                             ui.label("Reynolds number");
@@ -183,6 +215,33 @@ fn main() {
                         });
                 });
                 egui_winit.handle_platform_output(&window, full_output.platform_output);
+                if let Some(path) = gui_state.pending_obstacle_load.take() {
+                    if path.to_string_lossy() == "__circle__" {
+                        let obs = sim::obstacle::from_circle(gpu::lbm::W, gpu::lbm::H);
+                        lbm.set_mask(&obs.mask);
+                        lbm.init_equilibrium(gui_state.wind_speed);
+                        gui_state.total_steps = 0;
+                        gui_state.obstacle_name = obs.name.clone();
+                        log::info!("Loaded obstacle: circle");
+                    } else {
+                        match sim::obstacle::from_png(&path, gpu::lbm::W, gpu::lbm::H) {
+                            Ok(obs) => {
+                                lbm.set_mask(&obs.mask);
+                                lbm.init_equilibrium(gui_state.wind_speed);
+                                gui_state.total_steps = 0;
+                                gui_state.obstacle_name = obs.name.clone();
+                                log::info!(
+                                    "Loaded obstacle: {} ({} solid cells)",
+                                    obs.name,
+                                    obs.mask.iter().filter(|&&v| v == 1).count()
+                                );
+                            }
+                            Err(e) => {
+                                log::warn!("Failed to load obstacle, keeping '{}': {}", gui_state.obstacle_name, e);
+                            }
+                        }
+                    }
+                }
                 let frame = match surface.get_current_texture() {
                     Ok(f) => f,
                     Err(wgpu::SurfaceError::Lost) => {
